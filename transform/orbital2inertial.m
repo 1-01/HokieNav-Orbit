@@ -1,4 +1,4 @@
-function R = orbital2inertial(orbitalPars)
+function R = orbital2inertial(a, e, I, w, W, f)
 % 
 % Matt Werner (m.werner@vt.edu) - April 10, 2021
 % 
@@ -19,7 +19,7 @@ function R = orbital2inertial(orbitalPars)
 % 
 %    Inputs:
 % 
-%       orbitalPars - Classical osculating orbital elements such that each
+%  a, e, I, w, W, v - Classical osculating orbital elements such that each
 %                     element is an N-by-1 vector in the particular order
 %                     (a, e, I, w, W, f), where
 %                       a - Semimajor axis
@@ -28,23 +28,16 @@ function R = orbital2inertial(orbitalPars)
 %                       w - Argument of periapsis
 %                       W - Right ascension of ascending node
 %                       f - True anomaly
-%                     Size: N-by-6 (array)
-%                     Units: ? (SI, with length in kilometers)
+%                     Size: N-by-1 (vector)
+%                     Units: SI
 % 
 %    Outputs:
 % 
 %                 R - Inertial position vector consisting of the X, Y, and
 %                     Z components relative to the ECI coordinate frame.
 %                     Size: N-by-3
-%                     Units: km (kilometers)
-
-% Extract elements from the input
-a = orbitalPars(:, 1);
-e = orbitalPars(:, 2);
-I = orbitalPars(:, 3);
-w = orbitalPars(:, 4);
-W = orbitalPars(:, 5);
-f = orbitalPars(:, 6);
+%                     Units: SI
+% 
 
 % Calculate the orbital radius
 r = a.*(1 - e.^2)./(1 + e.*cos(f));

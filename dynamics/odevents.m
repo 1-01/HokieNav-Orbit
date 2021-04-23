@@ -1,4 +1,4 @@
-function [value, isterminal, direction] = odevents(t, x)
+function [value, isterminal, direction] = odevents(t, x, p)
 % 
 % Matt Werner (m.werner@vt.edu) - April 10, 2021
 % 
