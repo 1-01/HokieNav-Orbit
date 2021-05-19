@@ -64,4 +64,6 @@ satglobe4e, hold on
 plot3(Reci(:,1), Reci(:,2), Reci(:,3), 'Color', '#A2142F')
 plot3(Reci(end,1), Reci(end,2), Reci(end,3), 'w.', 'MarkerSize', 5), hold off
 % Plot radius
-figure, plot(t, sqrt(Reci(:,1).^2+Reci(:,2).^2+Reci(:,3).^2)-6378.1363), axis tight
+figure, plot(t/86400, sqrt(Reci(:,1).^2+Reci(:,2).^2+Reci(:,3).^2)-6378.1363), axis tight
+xlabel("Time $t$ [days]", 'interpreter', 'latex')
+ylabel("Altitude $h$ [km]", 'interpreter', 'latex')

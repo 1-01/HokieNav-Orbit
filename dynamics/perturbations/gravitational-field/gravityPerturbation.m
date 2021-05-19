@@ -137,6 +137,9 @@ checkxInInterval(sphrcoords, sphrcoordsI)
 % Get maximum degree and order
 [N, M] = deal(max(n), max(m));
 
+% Clear n and m for clear use within loop
+clear n m
+
 % Calculate the argument of the Legendre polynomials
 coscolat = cos(colatitude);
 
@@ -157,7 +160,7 @@ nmidx = 1;
 
 % Begin evaluating the gradient
 g_sphr = zeros(3, 1);
-for nn = 2:N
+for n = 2:N
     % Reset inside summations for r, colat, and longitude directions
     orderSeries_r = 0;
     orderSeries_colat = 0;
@@ -165,13 +168,13 @@ for nn = 2:N
     % Increment the power of (Req/r) to the current value of nn
     Reqn_over_rn = Reqn_over_rn*Req_over_r;
     % Assign value for the next degree
-    nnp1 = nn + 1;
+    np1 = n + 1;
     % Compute next degree of Legendre polynomials
-    Pnp1mcoscolat = computefnLegendre(nnp1, coscolat);
-    for mm = 0:min(nn, M)
+    Pnp1mcoscolat = computefnLegendre(np1, coscolat);
+    for m = 0:min(n, M)
         % Increase efficiency by utilizing recurrence relations on
         % trigonometric functions
-        if (mm > 0)
+        if (m > 0)
             cosmLon = cosmLonNext;
             sinmLon = sinmLonNext;
         else
@@ -183,24 +186,26 @@ for nn = 2:N
         Snm = S(nmidx);
         
         % Assign value for the next order
-        mmp1 = mm + 1;
+        mp1 = m + 1;
         
         % Assign this degree (and +1) and order's Legendre polynomial
-        Pnm = Pnmcoscolat(mmp1);
-        Pnp1m = Pnp1mcoscolat(mmp1);
-        % Precompute the standard longitudinal variation of the series
-        CnmCosmLon_plus_SnmSinmLon = Cnm*cosmLon + Snm*sinmLon;
+        Pnm = Pnmcoscolat(mp1);
+        Pnp1m = Pnp1mcoscolat(mp1);
+        % Compute renormalizing factor required to express the unnormalized
+        % Legendre polynomial of the next degree in terms of the normalized
+        % Legendre polynomial of the next degree using this degree and
+        % order
+        renormalize = sqrt((2*n + 1)/(2*n + 3)*(np1 + m)/(np1 - m));
         % Compute the derivative of Pnm(cos(x)) with respect to x using
         % this degree and the next degree evaluated at the same x and
         % order m with its leading negative sign disposed away (to be added
         % back in at the very end of this evaluation)
-%         negative_dPnmcoscolatdcolat = nnp1*cotcolat*Pnm - (nnp1 - mm)*csccolat*Pnp1m;
-        negative_dPnmcoscolatdcolat = nnp1*cotcolat*Pnm - (nnp1 - mm)*csccolat*sqrt((2*nn+1)/(2*nn+3)/(nn+mm+1)/(nn+mm-1))*Pnp1m;
+        negative_dPnmcoscolatdcolat = np1*cotcolat*Pnm - (np1 - m)*renormalize*csccolat*Pnp1m;
         
         % Compute the inner summations dependent upon the order m
-        orderSeries_r = orderSeries_r + CnmCosmLon_plus_SnmSinmLon*Pnm;
-        orderSeries_colat = orderSeries_colat + CnmCosmLon_plus_SnmSinmLon*negative_dPnmcoscolatdcolat;
-        orderSeries_longitude = orderSeries_longitude + mm*(Cnm*sinmLon - Snm*cosmLon)*Pnm;
+        orderSeries_r = orderSeries_r + (Cnm*cosmLon + Snm*sinmLon)*Pnm;
+        orderSeries_colat = orderSeries_colat + (Cnm*cosmLon + Snm*sinmLon)*negative_dPnmcoscolatdcolat;
+        orderSeries_longitude = orderSeries_longitude + m*(Cnm*sinmLon - Snm*cosmLon)*Pnm;
         
         % Recurrence relations
         cosmLonNext = cosLon*cosmLon - sinLon*sinmLon;
@@ -209,7 +214,7 @@ for nn = 2:N
         nmidx = nmidx + 1;
     end
     % Apply degree-only multiplicative factors to the inside summations
-    orderSeries_r = nnp1*Reqn_over_rn*orderSeries_r;
+    orderSeries_r = np1*Reqn_over_rn*orderSeries_r;
     orderSeries_colat = Reqn_over_rn*orderSeries_colat;
     orderSeries_longitude = Reqn_over_rn*orderSeries_longitude;
     

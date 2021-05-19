@@ -157,12 +157,12 @@ m = 4; % Spacecraft mass [kg]
                            'Oxygen');
 atmosDensity = rho(6); % Atmospheric density [kg/m3]
 S_CD = 0.01*1; % Product of reference area with CD (guessed area and CD) [m2]
-vr = sqrt(pars.GM/p)*(f*sin(L) - g*cos(L)); % Radial velocity [km/s]
-vt = sqrt(pars.GM/p)*(1 + f*cos(L) + g*sin(L)); % Transverse velocity [km/s]
+vr = sqrt(GM/p)*(f*sin(L) - g*cos(L)); % Radial velocity [km/s]
+vt = sqrt(GM/p)*(1 + f*cos(L) + g*sin(L)); % Transverse velocity [km/s]
 adrag_sphr = -0.5e3*atmosDensity*S_CD*norm(veci)*[vr; vt; 0]/m; % Aerodynamic drag acceleration [km/s2]
 
 % Total acceleration perturbations
-F = g_sphr + adrag_sphr;
+ap = g_sphr + adrag_sphr;
 
 % Write the dynamics using modified equinoctial orbital elements.
 % These orbital elements produce equations of motion that are singular for
@@ -171,7 +171,7 @@ dxdt = zeros(6,1);
 % The dynamics are Gauss's form of the Lagrange planetary equations in
 % modified equinoctial elements obtained from:
 %   1. Walker (Celestial Mechanics 36, 1985) pg. 413 Eq. 9
-%       - Note the two (2) discrepancies in dg/dt with sources 2. and 3.
+%       - 1st and 3rd equations are corrected in its errata
 %   2. Gondelach & Armellin (arXiv 2018) pg. 40 (Appx A) Eqs. 96-103
 %       - "Eqs." 98 and 100 belong to Eqs. 97 and 99
 %   3. Read, Younes, Junkins (Tech Science Press 2016) pg. 71 Eqs. 31-36
@@ -179,11 +179,11 @@ dxdt = zeros(6,1);
 % dxdt(1,1) = dp/dt,             dxdt(4,1) = dh/dt
 % dxdt(2,1) = df/dt,             dxdt(5,1) = dk/dt
 % dxdt(3,1) = dg/dt,             dxdt(6,1) = dL/dt
-dxdt(1,1) = 2*p/w*F(2);
-dxdt(2,1) = +F(1)*sin(L) + ((w + 1)*cos(L) + f)*F(2)/w - g*(h*sin(L) - k*cos(L))/w*F(3);
-dxdt(3,1) = -F(1)*cos(L) + ((w + 1)*sin(L) + g)*F(2)/w + f*(h*sin(L) - k*cos(L))/w*F(3);
-dxdt(4,1) = s2*cos(L)/2/w*F(3);
-dxdt(5,1) = s2*sin(L)/2/w*F(3);
-dxdt(6,1) = pars.GM*(w/p)^2 + (h*sin(L) - k*cos(L))/w*F(3);
+dxdt(1,1) = (2*p/w)*ap(2);
+dxdt(2,1) = +sin(L)*ap(1) + ((w + 1)*cos(L) + f)*ap(2)/w - g*(h*sin(L) - k*cos(L))*ap(3)/w;
+dxdt(3,1) = -cos(L)*ap(1) + ((w + 1)*sin(L) + g)*ap(2)/w + f*(h*sin(L) - k*cos(L))*ap(3)/w;
+dxdt(4,1) = s2/(2*w)*cos(L)*ap(3);
+dxdt(5,1) = s2/(2*w)*sin(L)*ap(3);
+dxdt(6,1) = GM*(w/p)^2 + (h*sin(L) - k*cos(L))/w*ap(3);
 % Include the common factor sqrt(p/GM).
-dxdt = dxdt*sqrt(p/pars.GM);
+dxdt = sqrt(p/GM)*dxdt;
