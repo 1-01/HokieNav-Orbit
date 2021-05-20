@@ -134,10 +134,9 @@ we = 7.29211585537707e-05;
 % where zhat is in the direction of the angular momentum
 % 
 % Obtain the perturbing gravitational acceleration
-[reci, veci] = modeq2inertial(p, f, g, h, k, L, GM);
-recf = [cos(we*t), sin(we*t), 0; -sin(we*t), cos(we*t), 0; 0, 0, 1]*reci'; % <-- Incomplete
-colatitude = acos(recf(3)/r);
-longitude = atan2(recf(2), recf(1));
+r_ecf = modeq2ecf(p, f, g, h, k, L);
+colatitude = acos(r_ecf(3)/r);
+longitude = atan2(r_ecf(2), r_ecf(1));
 longitude(longitude < 0) = longitude(longitude < 0) + 2*pi;
 g_sphr = [1,  0, 0; 
           0,  0, 1; 
@@ -147,7 +146,7 @@ g_sphr = [1,  0, 0;
                                      
 % Obtain the perturbing air drag
 m = 4; % Spacecraft mass [kg]
-[~, rho] = atmosnrlmsise00(1000*norm(recf)-6378136.3, ...
+[~, rho] = atmosnrlmsise00(1000*norm(r_ecf)-6378136.3, ...
                            pi/2 - colatitude, ...
                            longitude, ...
                            2021, ...
@@ -159,7 +158,7 @@ atmosDensity = rho(6); % Atmospheric density [kg/m3]
 S_CD = 0.01*1; % Product of reference area with CD (guessed area and CD) [m2]
 vr = sqrt(GM/p)*(f*sin(L) - g*cos(L)); % Radial velocity [km/s]
 vt = sqrt(GM/p)*(1 + f*cos(L) + g*sin(L)); % Transverse velocity [km/s]
-adrag_sphr = -0.5e3*atmosDensity*S_CD*norm(veci)*[vr; vt; 0]/m; % Aerodynamic drag acceleration [km/s2]
+adrag_sphr = -0.5e3*atmosDensity*S_CD*norm([vr; vt; 0])*[vr; vt; 0]/m; % Aerodynamic drag acceleration [km/s2]
 
 % Total acceleration perturbations
 ap = g_sphr + adrag_sphr;
