@@ -60,16 +60,15 @@ function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
 
 % No checks
 
+% Calculate the semimajor axis
+a = p./(1 - f.^2 - g.^2);
 % Calculate the eccentricity
 e = sqrt(f.^2 + g.^2);
-% Calculate the semimajor axis
-a = p./(1 - e.^2);
 % Calculate the inclination
-I = 2*atan(sqrt(h.^2 + k.^2));
+I = atan2(2*sqrt(h.^2 + k.^2), 1 - h.^2 - k.^2);
+% Calculate the argument of periapsis
+w = atan2(g.*h - f.*k, f.*h + g.*k);
 % Calculate the right ascension of the ascending node (RAAN)
 W = atan2(k, h);
-% Calculate the argument of periapsis
-wbar = atan2(g, f);
-w = wbar - W;
 % Calculate the true anomaly
-v = L - wbar;
+v = L - W - w;
