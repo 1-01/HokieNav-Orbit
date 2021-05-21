@@ -112,16 +112,12 @@ function dxdt = odeval(t, x, pars)
 % Print the integration time
 disp("t = " + t)
 
+%% Setup
 % Retrieve the standard gravitational parameter of Earth
 GM = pars.GM;
 
 % Extract orbital elements for convenience
-p = x(1);
-f = x(2);
-g = x(3);
-h = x(4);
-k = x(5);
-L = x(6);
+p = x(1); f = x(2); g = x(3); h = x(4); k = x(5); L = x(6);
 
 % Commit some common terms that are used repeatedly in the dynamics
 s2 = 1 + h^2 + k^2;
@@ -129,41 +125,87 @@ w = 1 + f*cos(L) + g*sin(L);
 r = p/w;
 we = 7.29211585537707e-05;
 
-% Define the perturbing force F = [R; T; N] in the polar basis situated in
-% the orbital plane. This basis has components rhat, thetahat, and zhat,
-% where zhat is in the direction of the angular momentum
-% 
-% Obtain the perturbing gravitational acceleration
-[reci, veci] = modeq2inertial(p, f, g, h, k, L, GM);
+%% Position
+% Calculate the current position in the Earth-centered inertial (ECI) and
+% Earth-centered fixed (ECF) coordinate frames. The ECF position is further
+% expressed in standard spherical (SPH) coordinates.
+
+% ============================ ECI POSITION ===============================
+% Obtain the Earth-centered (inertial) position and break into components
+reci = modeq2inertial(p, f, g, h, k, L);
+Xeci = reci(1); Yeci = reci(2); Zeci = reci(3);
+
+% ============================ ECF POSITION ===============================
+% Obtain the Earth-fixed (noninertial) position and break into components
 recf = [cos(we*t), sin(we*t), 0; -sin(we*t), cos(we*t), 0; 0, 0, 1]*reci'; % <-- Incomplete
-colatitude = acos(recf(3)/r);
-longitude = atan2(recf(2), recf(1));
+xecf = recf(1); yecf = recf(2); zecf = recf(3);
+
+% ============================ SPH POSITION ===============================
+[longitude, geocentricLatitude, ~] = cart2sph(xecf, yecf, zecf);
 longitude(longitude < 0) = longitude(longitude < 0) + 2*pi;
-g_sphr = [1,  0, 0; 
-          0,  0, 1; 
-          0, -1, 0] * gravityPerturbation(398600.4418, 6378.1363, ...
-                                         pars.degree, pars.order, pars.Cnm, pars.Snm, ...
-                                         r, colatitude, longitude);
-                                     
-% Obtain the perturbing air drag
-m = 4; % Spacecraft mass [kg]
-[~, rho] = atmosnrlmsise00(1000*norm(recf)-6378136.3, ...
-                           pi/2 - colatitude, ...
+geocentricColatitude = pi/2 - geocentricLatitude;
+
+%% Atmosphere
+% Calculate Earth's atmospheric density at altitude for use regarding drag
+% using the Naval Research Lab's Mass Spectrometer and Incoherent Scatter
+% Radar Exosphere of 2000 (NRLMSISE00) atmospheric model. This model is
+% emperically founded through (many) measurements and is valid from Earth's
+% surface through the exosphere. It has good history of being used with
+% other satellite simulation software and is comparable to other emperical
+% models (like JB2008).
+
+% Utilize NRLMSISE00 to calculate atmospheric densities of individual
+% species [1/m3] as well as the total mass density [kg/m3] (element 6)
+[~, densities] = atmosnrlmsise00(1000*r - 6378136.3, ... <-- Not quite complete
+                           geocentricLatitude, ... <-- Requires geodetic latitude
                            longitude, ...
                            2021, ...
                            168, ...
                            50000+t, ... <-- Sample time of day (UTC)
                            'None', ...  <-- No warning (F107, F107A, APH)
                            'Oxygen');
-atmosDensity = rho(6); % Atmospheric density [kg/m3]
+% Extract the atmospheric density [kg/m3]
+altDensity = densities(6);
+
+%% Perturbing Accelerations
+% Calculate additional accelerations that are not accounted for in the
+% standard 2-body solution. These accelerations can include any other
+% (physical) effect that is NOT the central Newtonian gravitational
+% acceleration.
+% 
+% Define the perturbing acceleration ap = [R; T; N] in the spherical-like
+% basis in which:
+%   1. R points radially outwards
+%   2. T points transversely to R in the direction of motion (longitudinal)
+%   3. N points normal to the orbital plane in the direction of the angular
+%        momentum vector.
+% The 3-direction is what differentiates this coordinate system from a
+% spherical one.
+
+% ============================== GRAVITY ==================================
+% Obtain the perturbing gravitational acceleration according to EGM2008.
+% Note: The values for Earth's gravitational parameter GM and equatorial
+%       radius are specified by EGM2008 for compatibility with Geocentric
+%       Coordinate Time (IERS TN No. 36 pg. 79).
+g_sphr = gravityPerturbation(398600.4418, 6378.1363, ...
+                             pars.degree, pars.order, pars.Cnm, pars.Snm, ...
+                             r, geocentricColatitude, longitude);
+% Switch around the components from the spherical basis to the RTN basis
+g_sphr = [g_sphr(1); g_sphr(3); -g_sphr(2)];
+
+% ========================= AERODYNAMIC DRAG ==============================
+mass = 4; % Spacecraft mass [kg]
 S_CD = 0.01*1; % Product of reference area with CD (guessed area and CD) [m2]
 vr = sqrt(GM/p)*(f*sin(L) - g*cos(L)); % Radial velocity [km/s]
 vt = sqrt(GM/p)*(1 + f*cos(L) + g*sin(L)); % Transverse velocity [km/s]
-adrag_sphr = -0.5e3*atmosDensity*S_CD*norm(veci)*[vr; vt; 0]/m; % Aerodynamic drag acceleration [km/s2]
+% Obtain the perturbing air drag [km/s2]
+adrag_sphr = -0.5e3*altDensity*S_CD*norm([vr; vt; 0])*[vr; vt; 0]/mass;
 
+% =============================== TOTAL ===================================
 % Total acceleration perturbations
 ap = g_sphr + adrag_sphr;
 
+%% Nonlinear Dynamics
 % Write the dynamics using modified equinoctial orbital elements.
 % These orbital elements produce equations of motion that are singular for
 % I = 180 degrees.
@@ -185,5 +227,5 @@ dxdt(3,1) = -cos(L)*ap(1) + ((w + 1)*sin(L) + g)*ap(2)/w + f*(h*sin(L) - k*cos(L
 dxdt(4,1) = s2/(2*w)*cos(L)*ap(3);
 dxdt(5,1) = s2/(2*w)*sin(L)*ap(3);
 dxdt(6,1) = GM*(w/p)^2 + (h*sin(L) - k*cos(L))/w*ap(3);
-% Include the common factor sqrt(p/GM).
+% Include the common factor sqrt(p/GM)
 dxdt = sqrt(p/GM)*dxdt;
