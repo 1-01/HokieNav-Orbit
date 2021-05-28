@@ -20,10 +20,10 @@ function [R, varargout] = modeq2inertial(p, f, g, h, k, L, varargin)
 %                     element is an N-by-1 vector in the particular order
 %                     (p, f, g, h, k, L), where
 %                       p - Semiparameter
-%                       f - ?
-%                       g - ?
-%                       h - ?
-%                       k - ?
+%                       f - Eccentricity component (1 of 2)
+%                       g - Eccentricity component (2 of 2)
+%                       h - Orientation parameter  (1 of 2)
+%                       k - Orientation parameter  (2 of 2)
 %                       L - True longitude
 %                     Size: N-by-1 (vector)
 %                     Units: SI (km)

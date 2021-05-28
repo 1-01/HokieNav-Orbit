@@ -1,4 +1,4 @@
-function dxdt = odeval(t, x, pars)
+function [dxdt, varargout] = odeval(t, x, earth, IC)
 % 
 % Matt Werner (m.werner@vt.edu) - April 10, 2021
 % 
@@ -114,22 +114,37 @@ disp("t = " + t)
 
 %% Setup
 % Retrieve the standard gravitational parameter of Earth
-GM = pars.GM;
+GM = earth.GM;
 
 % Extract orbital elements for convenience
 p = x(1); f = x(2); g = x(3); h = x(4); k = x(5); L = x(6);
 
 % Commit some common terms that are used repeatedly in the dynamics
 s2 = 1 + h^2 + k^2;
-w = 1 + f*cos(L) + g*sin(L);
+sinL = sin(L);
+cosL = cos(L);
+w = 1 + f*cosL + g*sinL;
 r = p/w;
-we = 7.29211585537707e-05;
 
-%% Position
+%% Time and Position
+% Calculate the current time and extract the day number (starting from Jan.
+% 1 of the current year) and the seconds passed in the day since midnight
+% UTC.
+tUTC = IC.t.UTC + t/86400;
+DOY = day(tUTC, 'dayofyear');
+SOD = hour(tUTC)*3600 + minute(tUTC)*60 + second(tUTC);
+
+% Calculate the current Julian date (UTC)
+JDUTC = IC.t.JD + t/86400;
+
+% ================== GREENWICH MEAN SIDEREAL TIME (GMST) ==================
+% Calculate Greenwich Mean Sidereal Time (GMST)
+[~, GMST] = earthRotationAngles(JDUTC);
+
 % Calculate the current position in the Earth-centered inertial (ECI) and
 % Earth-centered fixed (ECF) coordinate frames. The ECF position is further
 % expressed in standard spherical (SPH) coordinates.
-
+% 
 % ============================ ECI POSITION ===============================
 % Obtain the Earth-centered (inertial) position and break into components
 reci = modeq2inertial(p, f, g, h, k, L);
@@ -137,13 +152,31 @@ Xeci = reci(1); Yeci = reci(2); Zeci = reci(3);
 
 % ============================ ECF POSITION ===============================
 % Obtain the Earth-fixed (noninertial) position and break into components
-recf = [cos(we*t), sin(we*t), 0; -sin(we*t), cos(we*t), 0; 0, 0, 1]*reci'; % <-- Incomplete
+recf = R3(GMST)*reci';
 xecf = recf(1); yecf = recf(2); zecf = recf(3);
 
 % ============================ SPH POSITION ===============================
-[longitude, geocentricLatitude, ~] = cart2sph(xecf, yecf, zecf);
-longitude(longitude < 0) = longitude(longitude < 0) + 2*pi;
+[longitudepipi, geocentricLatitude, ~] = cart2sph(xecf, yecf, zecf);
+longitude02pi = longitudepipi;
+longitude02pi(longitude02pi < 0) = longitude02pi(longitude02pi < 0) + 2*pi;
 geocentricColatitude = pi/2 - geocentricLatitude;
+
+% ============================ GPS POSITION ===============================
+% Obtain (ellipsoidal) representation of the spacecraft's current position
+% with respect to the ECF frame associated with the earth's WGS84
+% ellipsoid.
+% 
+% The WGS84 ellipsoid is defined by equatorial radius and flattening:
+%   Req = 6378.1370 km
+%     f = 1/298.257223563
+% for which its squared eccentricity is 2*f - f*f. The value below can be
+% verified that it is indeed the ellipsoid's eccentricity.
+[~, geodeticLatitude, GPSh] = geocentric2geodetic(xecf, yecf, zecf, ...
+                                             6378.1370, 0.081819190842621);
+
+% ====================== LOCAL SIDEREAL TIME (LST) ========================
+% Calculate the Local Sidereal Time (LST)
+LST = GMST + longitudepipi;
 
 %% Atmosphere
 % Calculate Earth's atmospheric density at altitude for use regarding drag
@@ -156,12 +189,12 @@ geocentricColatitude = pi/2 - geocentricLatitude;
 
 % Utilize NRLMSISE00 to calculate atmospheric densities of individual
 % species [1/m3] as well as the total mass density [kg/m3] (element 6)
-[~, densities] = atmosnrlmsise00(1000*r - 6378136.3, ... <-- Not quite complete
-                           geocentricLatitude, ... <-- Requires geodetic latitude
-                           longitude, ...
-                           2021, ...
-                           168, ...
-                           50000+t, ... <-- Sample time of day (UTC)
+[~, densities] = atmosnrlmsise00(GPSh*1e3, ... Current GPS height (m)
+                           rad2deg(geodeticLatitude), ... latitude (deg)
+                           rad2deg(longitude02pi), ... longitude (deg)
+                           year(tUTC), ... Year
+                           DOY, ... Day of the year
+                           SOD, ... Seconds for time of day (UTC)
                            'None', ...  <-- No warning (F107, F107A, APH)
                            'Oxygen');
 % Extract the atmospheric density [kg/m3]
@@ -188,16 +221,16 @@ altDensity = densities(6);
 %       radius are specified by EGM2008 for compatibility with Geocentric
 %       Coordinate Time (IERS TN No. 36 pg. 79).
 g_sphr = gravityPerturbation(398600.4418, 6378.1363, ...
-                             pars.degree, pars.order, pars.Cnm, pars.Snm, ...
-                             r, geocentricColatitude, longitude);
+                             earth.degree, earth.order, earth.Cnm, earth.Snm, ...
+                             r, geocentricColatitude, longitude02pi);
 % Switch around the components from the spherical basis to the RTN basis
 g_sphr = [g_sphr(1); g_sphr(3); -g_sphr(2)];
 
 % ========================= AERODYNAMIC DRAG ==============================
 mass = 4; % Spacecraft mass [kg]
 S_CD = 0.01*1; % Product of reference area with CD (guessed area and CD) [m2]
-vr = sqrt(GM/p)*(f*sin(L) - g*cos(L)); % Radial velocity [km/s]
-vt = sqrt(GM/p)*(1 + f*cos(L) + g*sin(L)); % Transverse velocity [km/s]
+vr = sqrt(GM/p)*(f*sinL - g*cosL); % Radial velocity [km/s]
+vt = sqrt(GM/p)*(1 + f*cosL + g*sinL); % Transverse velocity [km/s]
 % Obtain the perturbing air drag [km/s2]
 adrag_sphr = -0.5e3*altDensity*S_CD*norm([vr; vt; 0])*[vr; vt; 0]/mass;
 
@@ -222,10 +255,42 @@ dxdt = zeros(6,1);
 % dxdt(2,1) = df/dt,             dxdt(5,1) = dk/dt
 % dxdt(3,1) = dg/dt,             dxdt(6,1) = dL/dt
 dxdt(1,1) = (2*p/w)*ap(2);
-dxdt(2,1) = +sin(L)*ap(1) + ((w + 1)*cos(L) + f)*ap(2)/w - g*(h*sin(L) - k*cos(L))*ap(3)/w;
-dxdt(3,1) = -cos(L)*ap(1) + ((w + 1)*sin(L) + g)*ap(2)/w + f*(h*sin(L) - k*cos(L))*ap(3)/w;
-dxdt(4,1) = s2/(2*w)*cos(L)*ap(3);
-dxdt(5,1) = s2/(2*w)*sin(L)*ap(3);
-dxdt(6,1) = GM*(w/p)^2 + (h*sin(L) - k*cos(L))/w*ap(3);
+dxdt(2,1) = +sinL*ap(1) + ((w + 1)*cosL + f)*ap(2)/w - g*(h*sinL - k*cosL)*ap(3)/w;
+dxdt(3,1) = -cosL*ap(1) + ((w + 1)*sinL + g)*ap(2)/w + f*(h*sinL - k*cosL)*ap(3)/w;
+dxdt(4,1) = s2/(2*w)*cosL*ap(3);
+dxdt(5,1) = s2/(2*w)*sinL*ap(3);
+dxdt(6,1) = GM*(w/p)^2 + (h*sinL - k*cosL)/w*ap(3);
 % Include the common factor sqrt(p/GM)
 dxdt = sqrt(p/GM)*dxdt;
+
+%% Variable Output
+% ============================= STATE DYNAMICS =============================
+varargout{1} = dxdt(1);
+varargout{2} = dxdt(2);
+varargout{3} = dxdt(3);
+varargout{4} = dxdt(4);
+varargout{5} = dxdt(5);
+varargout{6} = dxdt(6);
+% ======================== PERTURBING ACCELERATION ========================
+varargout{7} = g_sphr';
+varargout{8} = adrag_sphr';
+% ========================== ATMOSPHEREIC DENSITY =========================
+varargout{9} = altDensity;
+% ================================= TIME ==================================
+varargout{10} = GMST;
+% ========================== GEODETIC COORDINATES =========================
+varargout{11} = longitudepipi;
+varargout{12} = geodeticLatitude;
+varargout{13} = GPSh;
+% ========================== SPHERICAL COORDINATES ========================
+varargout{14} = r;
+varargout{15} = geocentricColatitude;
+varargout{16} = longitude02pi;
+% ========================= EARTH-FIXED COORDINATES =======================
+varargout{17} = xecf;
+varargout{18} = yecf;
+varargout{19} = zecf;
+% ======================== EARTH-INERTIAL COORDINATES =====================
+varargout{20} = Xeci;
+varargout{21} = Yeci;
+varargout{22} = Zeci;

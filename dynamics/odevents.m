@@ -1,4 +1,4 @@
-function [value, isterminal, direction] = odevents(t, x, p)
+function [value, isterminal, direction] = odevents(t, x, p, ic)
 % 
 % Matt Werner (m.werner@vt.edu) - April 10, 2021
 % 
@@ -14,6 +14,14 @@ function [value, isterminal, direction] = odevents(t, x, p)
 % 
 %                 x - Integration state.
 %                     Size: n-by-1 (vector)
+%                     Units: ? (SI)
+% 
+%                 p - Gravity parameters.
+%                     Size: 1-by-1 (structure)
+%                     Units: ? (SI)
+% 
+%                ic - Initial conditions.
+%                     Size: 7-by-1 (structure)
 %                     Units: ? (SI)
 % 
 %    Outputs:

@@ -3,3 +3,6 @@ mats/
 notes/
 out/
 tles/
+
+# Ignore these files
+*.asv
