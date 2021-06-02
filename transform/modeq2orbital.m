@@ -35,10 +35,10 @@ function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
 %                     element is an N-by-1 vector in the particular order
 %                     (p, f, g, h, k, L), where
 %                       p - Semiparameter
-%                       f - ?
-%                       g - ?
-%                       h - ?
-%                       k - ?
+%                       f - Eccentricity component (1 of 2)
+%                       g - Eccentricity component (2 of 2)
+%                       h - Orientation parameter  (1 of 2)
+%                       k - Orientation parameter  (2 of 2)
 %                       L - True longitude
 %                     Size: N-by-1 (vector)
 %                     Units: SI
@@ -60,15 +60,17 @@ function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
 
 % No checks
 
-% Calculate the semimajor axis
-a = p./(1 - f.^2 - g.^2);
 % Calculate the eccentricity
 e = sqrt(f.^2 + g.^2);
+% Calculate the semimajor axis
+a = p./(1 - e.^2);
 % Calculate the inclination
-I = atan2(2*sqrt(h.^2 + k.^2), 1 - h.^2 - k.^2);
-% Calculate the argument of periapsis
-w = atan2(g.*h - f.*k, f.*h + g.*k);
+I = 2*atan(sqrt(h.^2 + k.^2));
 % Calculate the right ascension of the ascending node (RAAN)
 W = atan2(k, h);
+W(W < 0) = W(W < 0) + 2*pi;
+% Calculate the argument of periapsis
+w = atan2(g.*h - f.*k, f.*h + g.*k);
+w(w < 0) = w(w < 0) + 2*pi;
 % Calculate the true anomaly
-v = L - W - w;
+v = L - (W + w);

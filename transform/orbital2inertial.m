@@ -19,7 +19,7 @@ function R = orbital2inertial(a, e, I, w, W, f)
 % 
 %    Inputs:
 % 
-%  a, e, I, w, W, v - Classical osculating orbital elements such that each
+%  a, e, I, w, W, f - Classical osculating orbital elements such that each
 %                     element is an N-by-1 vector in the particular order
 %                     (a, e, I, w, W, f), where
 %                       a - Semimajor axis
