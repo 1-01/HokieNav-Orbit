@@ -23,36 +23,49 @@ TLE.W = deg2rad(121.9403); % Right ascension of ascending node (RAAN)
 
 %% ODE Propagation
 % Solve for the true anomaly via Kepler's equation
-[~, TLE.v] = anomalies(TLE.M, TLE.e);
+[~, TLE.f] = anomalies(TLE.M, TLE.e);
 % Convert TLE to modified equinoctial elements
 [IC.MEE.p, IC.MEE.f, IC.MEE.g, IC.MEE.h, IC.MEE.k, IC.MEE.L] ...
-    = orbital2modeq(TLE.a, TLE.e, TLE.I, TLE.w, TLE.W, TLE.v);
+    = orbital2modeq(TLE.a, TLE.e, TLE.I, TLE.w, TLE.W, TLE.f);
+% Convert the initial conditions to the (ECI) Cartesian state
+[IC.x.r, IC.x.v] = modeq2inertial(IC.MEE.p, IC.MEE.f, IC.MEE.g, IC.MEE.h, IC.MEE.k, IC.MEE.L, gravity.GM);
 
-tspan = [0, 15.5*(2*pi/TLE.n)]; % Time span (~x complete orbits)
+% Time span
+tspan = [0, 15.5*(2*pi/TLE.n)]; % (~x complete orbits)
 tspan = [0, 50405];
-x0 = struct2array(IC.MEE)'; % Initial state of modified equinoctial elements
-options = odeset('InitialStep', 15, 'RelTol', 1e-13, 'MaxStep', 30, 'Events', @odevents);
+
+% Initial condition
+x0 = struct2array(IC.x)'; % Initial state of modified equinoctial elements
+
+% Specify options for the ODE solver
+options = odeset('InitialStep', 15, ...
+                 'RelTol', 1e-13, ...
+                 'AbsTol', 1e-14, ...
+                 'MaxStep', 30, ...
+                 'Events', @odevents);
 
 % Solve
-traj = struct('t', [], 'MEE', [], 'events', []);
-[traj.t, MEE, traj.events.t, traj.events.MEE, traj.events.ID] ...
+traj = struct('t', [], 'x', [], 'dxdt', [], 'events', []);
+[traj.t, x, traj.events.t, traj.events.x, traj.events.ID] ...
     = ode113(@odeval, tspan, x0, options, gravity, IC);
-traj.MEE.p = MEE(:,1); traj.MEE.f = MEE(:,2); traj.MEE.g = MEE(:,3);
-traj.MEE.h = MEE(:,4); traj.MEE.k = MEE(:,5); traj.MEE.L = MEE(:,6);
-clear MEE
+
+% Distribute the state
+traj.x.PX = x(:,1); traj.x.PY = x(:,2); traj.x.PZ = x(:,3);
+traj.x.VX = x(:,4); traj.x.VY = x(:,5); traj.x.VZ = x(:,6);
+clear x
 
 %% Dynamics Reconstruction
 for k = numel(traj.t):-1:1
     [~, ...
-     traj.dMEEdt.p(k,1), ... 1
-     traj.dMEEdt.f(k,1), ... 2
-     traj.dMEEdt.g(k,1), ... 3
-     traj.dMEEdt.h(k,1), ... 4
-     traj.dMEEdt.k(k,1), ... 5
-     traj.dMEEdt.L(k,1), ... 6
-     traj.accel.grav(k,:), ... 7
-     traj.accel.drag(k,:), ... 8
-     traj.atmos.density(k,1), ... 9
+     traj.dxdt.VX(k,1), ... 1
+     traj.dxdt.VY(k,1), ... 2
+     traj.dxdt.VZ(k,1), ... 3
+     traj.dxdt.AX(k,1), ... 4
+     traj.dxdt.AY(k,1), ... 5
+     traj.dxdt.AZ(k,1), ... 6
+     traj.accelerations.ECI.gravity(k,:), ... 7
+     traj.accelerations.ECI.drag(k,:), ... 8
+     traj.atmosphere.density(k,1), ... 9
      traj.timeSystems.GMST(k,1), ... 10
      traj.position.geodetic.longitude(k,1), ... 11
      traj.position.geodetic.latitude(k,1), ... 12
@@ -67,29 +80,34 @@ for k = numel(traj.t):-1:1
      traj.position.ECI.Y(k,1), ... 21
      traj.position.ECI.Z(k,1)] ... 22
         = odeval(traj.t(k), ...
-              [traj.MEE.p(k), traj.MEE.f(k), traj.MEE.g(k), ...
-               traj.MEE.h(k), traj.MEE.k(k), traj.MEE.L(k)], ...
-              gravity, IC);
+                  [traj.x.PX(k); traj.x.PY(k); traj.x.PZ(k);  ...
+                   traj.x.VX(k); traj.x.VY(k); traj.x.VZ(k)], ...
+                  gravity, IC);
 end
 
 %% Additional Derived Information
-% Recover the classical orbital elements
-[traj.COE.a, traj.COE.e, traj.COE.I, traj.COE.w, traj.COE.W, traj.COE.v] ...
-     = modeq2orbital(traj.MEE.p, traj.MEE.f, traj.MEE.g, traj.MEE.h, traj.MEE.k, traj.MEE.L);
 
 % Perform coordinate transformations to express known quantities in
 % different bases. Of particular interest is obtaining the Earth-fixed
-% and Earth-inertial representations of the perturbing accelerations
-Tsphr_orbsphr = [1,0,0;0,0,-1;0,1,0];
+% and spherical representations of the perturbing accelerations
 for k = numel(traj.t):-1:1
-    Tcart_sphr = sphr2ijk(traj.position.geocentric.longitude(k), ...
-                          traj.position.geocentric.colatitude(k));
-    traj.accel.gravcart(k,:) = (Tcart_sphr*Tsphr_orbsphr*traj.accel.grav(k,:)')';
-    traj.accel.dragcart(k,:) = (Tcart_sphr*Tsphr_orbsphr*traj.accel.grav(k,:)')';
-    traj.accel.acart(k,:) = traj.accel.gravcart(k,:) + traj.accel.dragcart(k,:);
+    % Recover the classical orbital elements
+    [traj.COE.a(k,1), traj.COE.e(k,1), traj.COE.I(k,1), ...
+     traj.COE.w(k,1), traj.COE.W(k,1), traj.COE.f(k,1)] ...
+      = inertial2orbital([traj.x.PX(k); traj.x.PY(k); traj.x.PZ(k)], ...
+                         [traj.x.VX(k); traj.x.VY(k); traj.x.VZ(k)], gravity.GM);
+    
+    % Coordinate transformations
+    TECF_ECI = R3(traj.timeSystems.GMST(k));
+    TSPH_ECF = sphr2ijk(traj.position.geocentric.longitude(k), ...
+                          traj.position.geocentric.colatitude(k))';
+    traj.accelerations.ECF.gravity(k,:) = (TECF_ECI*traj.accelerations.ECI.gravity(k,:)')';
+    traj.accelerations.SPH.gravity(k,:) = (TSPH_ECF*traj.accelerations.ECF.gravity(k,:)')';
+    traj.accelerations.ECF.drag(k,:) = (TECF_ECI*traj.accelerations.ECI.drag(k,:)')';
+    traj.accelerations.SPH.drag(k,:) = (TSPH_ECF*traj.accelerations.ECF.drag(k,:)')';
 end
 % Clear all temporary variables
-clear k Tcart_sphr Tsphr_orbsphr tspan x0
+clear k TSPH_ECF TECF_ECI tspan x0
 
 %% Plot
 % Plot over the Earth
