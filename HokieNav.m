@@ -3,6 +3,8 @@
 clear, clc
 
 %% Inputs
+diary out/log
+
 % Gravitational parameter (km3/s2)
 gravity.GM = 398600.4418;
 
@@ -108,19 +110,15 @@ for k = numel(traj.t):-1:1
 end
 % Clear all temporary variables
 clear k TSPH_ECF TECF_ECI tspan x0
+diary off
 
 %% Plot
 % Plot over the Earth
-satglobe4e, hold on
-plot3(traj.position.ECF.x, ...
-      traj.position.ECF.y, ...
-      traj.position.ECF.z, ...
-      'Color', '#A2142F')
-plot3(traj.position.ECF.x(end), ...
-      traj.position.ECF.y(end), ...
-      traj.position.ECF.z(end), ...
-      'w.', 'MarkerSize', 5), hold off
-% Plot GPS height
-figure, plot(traj.t/86400, traj.position.geodetic.altitude), axis tight
-xlabel("Time $t$ [days]", 'interpreter', 'latex')
-ylabel("Altitude $h$ [km]", 'interpreter', 'latex')
+plotTrajectory(traj.position.ECI.X, ...
+               traj.position.ECI.Y, ...
+               traj.position.ECI.Z)
+
+% Plot ground track
+figure
+groundTrack(traj.position.geodetic.longitude, ...
+            traj.position.geodetic.latitude)
