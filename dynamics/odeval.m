@@ -74,7 +74,9 @@ JDUTC = IC.t.JD + t/86400;
 % ================== GREENWICH MEAN SIDEREAL TIME (GMST) ==================
 % Calculate Greenwich Mean Sidereal Time (GMST)
 [~, GMST] = earthRotationAngles(JDUTC);
+% Associated rotation matrices (ECI <--> ECF)
 Recf_eci = R3(GMST);
+Reci_ecf = Recf_eci';
 
 % Calculate the current position in the Earth-centered fixed (ECF)
 % coordinate frames. The ECF position is further expressed in standard
@@ -90,6 +92,8 @@ xecf = recf(1); yecf = recf(2); zecf = recf(3);
 longitude02pi = longitudepipi;
 longitude02pi(longitude02pi < 0) = longitude02pi(longitude02pi < 0) + 2*pi;
 geocentricColatitude = pi/2 - geocentricLatitude;
+% Associated rotation matrix (ECF <-- SPH)
+Recf_sph = sphr2ijk(longitude02pi, geocentricColatitude);
 
 % ============================ GPS POSITION ===============================
 % Obtain (ellipsoidal) representation of the spacecraft's current position
@@ -108,13 +112,12 @@ geocentricColatitude = pi/2 - geocentricLatitude;
 % Calculate the Local Sidereal Time (LST)
 LST = GMST + longitudepipi;
 
-% ========================== ROTATION MATRICES ============================
-Rrtn_sph = [1, 0, 0; 0, 0, 1; 0, -1, 0];
-Rsph_ecf = sphr2ijk(longitude02pi, geocentricColatitude)';
-Rrtn_ecf = Rrtn_sph*Rsph_ecf;
-Recf_rtn = Rrtn_ecf';
-Reci_ecf = Recf_eci';
-Reci_rtn = Reci_ecf*Recf_rtn;
+% ====================== POS/VEL OF EARTH WRT SUN =========================
+posEarthRelSun_ICRF = [149597870.700;0;0];
+velEarthRelSun_ICRF = [1;1;1];
+% ====================== POS/VEL OF LUNA WRT EARTH =======================
+posLunaRelEarth_ICRF = [1;1;1];
+velLunaRelEarth_ICRF = [1;1;1];
 
 %% Atmosphere
 % Calculate Earth's atmospheric density at altitude for use regarding drag
@@ -144,42 +147,38 @@ altDensity = densities(6);
 % (physical) effect that is NOT the central Newtonian gravitational
 % acceleration.
 % 
-% Define the perturbing acceleration ap = [R; T; N] in the spherical-like
-% basis in which:
-%   1. R points radially outwards
-%   2. T points transversely to R in the direction of motion (longitudinal)
-%   3. N points normal to the orbital plane in the direction of the angular
-%        momentum vector.
-% The 3-direction is what differentiates this coordinate system from a
-% spherical one.
+% Define the perturbing acceleration ap = [X; Y; Z] in the (inertial) ECI
+% basis (with corresponding elements I, J, and K) in which:
+%   1. I points towards the vernal equinox on Jan 1, 2000 12:00:000 TT
+%        (J200 epoch)
+%   2. J completes the right-handed triad of unit vectors (J = K x I)
+%   3. K points directly through the North pole at the J2000 epoch
+% Note: The alignment of K and k (the 3-axis of the ECF coordinate system)
+%       is not exactly perfect in reality. As such, the transformation
+%       between the ECI and ECF frames is more complicated than a simple
+%       3-rotation, but this rotation provides the majority of information
+%       transfer between the frames.
 
 % ============================== GRAVITY ==================================
 % Obtain the perturbing gravitational acceleration according to EGM2008.
 % Note: The values for Earth's gravitational parameter GM and equatorial
 %       radius are specified by EGM2008 for compatibility with Geocentric
 %       Coordinate Time (IERS TN No. 36 pg. 79).
-gp_rtn = gravityPerturbation(398600.4418, 6378.1363, ...
+gp_sph = gravityPerturbation(398600.4418, 6378.1363, ...
                        earth.degree, earth.order, earth.Cnm, earth.Snm, ...
                        r, geocentricColatitude, longitude02pi);
-% Switch around the components from the spherical basis to the RTN basis
-gp_rtn = [gp_rtn(1); gp_rtn(3); -gp_rtn(2)];
+% Switch around the components from the spherical basis to the ECI basis
+gp_eci = Reci_ecf*Recf_sph*gp_sph;
 
 % ========================= AERODYNAMIC DRAG ==============================
+% Obtain the perturbing aerodynamic acceleration (drag) according to the
+% NRLMMSISE00 atmosphere model at the spacecraft's current position and
+% time.
 mass = 4; % Spacecraft mass [kg]
-S_CD = 0.01*2.4; % Product of reference area with CD (guessed area and CD) [m2]
-vwindecf = [0;0;0]; % Local wind velocity [km/s]
-vecf = Recf_eci*veci - cross(wEarth, recf) + vwindecf; % Noninertial vel. [km/s]
-% Obtain the perturbing air drag [km/s2]
-adrag_ecf = -0.5e3*altDensity*S_CD*norm(vecf)*vecf/mass;
-adrag_rtn = Rrtn_ecf*adrag_ecf;
-
-% =============================== TOTAL ===================================
-% Central Newtonian gravitational acceleration
-a2bp_rtn = [-GM/r^2; 0; 0];
-% Perturbations in the orbital frame spherical frame
-ap_rtn = gp_rtn + adrag_rtn;
-% Total acceleration
-a_rtn = a2bp_rtn + ap_rtn;
+S_CD = 0.01*2.4; % Product of reference area with CD (guess) [m2]
+adrag_eci = dragPerturbation(S_CD/mass, ...
+                             altDensity, ...
+                             veci - cross(wEarth, reci));
 
 %% Nonlinear Dynamics
 % Write the dynamics using standard Cartesian components of position and
@@ -196,9 +195,9 @@ dxdt = zeros(6,1);
 % dxdt(1,1) = dX/dt,             dxdt(4,1) = dVX/dt
 % dxdt(2,1) = dY/dt,             dxdt(5,1) = dVY/dt
 % dxdt(3,1) = dZ/dt,             dxdt(6,1) = dVZ/dt
-dxdt(1:3) = x(4:6);
-dxdt(4:6) = Reci_rtn*a_rtn;
-
+dxdt(1:3) = veci;
+dxdt(4:6) = (-GM/r^2)*(reci/r) + gp_eci ...
+                               + adrag_eci;
 
 %% Variable Output
 % ============================= STATE DYNAMICS =============================
@@ -209,8 +208,8 @@ varargout{4} = dxdt(4);
 varargout{5} = dxdt(5);
 varargout{6} = dxdt(6);
 % ======================== PERTURBING ACCELERATION ========================
-varargout{7} = (Reci_rtn*gp_rtn)';
-varargout{8} = (Reci_rtn*adrag_rtn)';
+varargout{7} = gp_eci';
+varargout{8} = adrag_eci';
 % ========================== ATMOSPHEREIC DENSITY =========================
 varargout{9} = altDensity;
 % ================================= TIME ==================================
