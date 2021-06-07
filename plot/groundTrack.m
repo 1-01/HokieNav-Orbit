@@ -64,5 +64,5 @@ if (numel(jumpIndices) > 0)
 else
     % Otherwise, plot the entire transit since a crossing of the
     % antimeridian doesn't occur
-    plot(rad2deg(longitude, rad2deg(latitude)), 'Color', '#A2142F');
+    plot(rad2deg(longitude), rad2deg(latitude), 'Color', '#A2142F');
 end
