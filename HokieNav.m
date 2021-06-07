@@ -1,9 +1,11 @@
 % HokieNav Orbital Simulation
 % Matt Werner (m.werner@vt.edu) - April 8, 2021
-clear, clc
+clear, clc, HokieNavPath
 
 %% Inputs
 diary out/log
+disp("HokieNav Orbital Simulation")
+disp(strcat("Start time: ", datestr(datetime('now'))))
 
 % Gravitational parameter (km3/s2)
 gravity.GM = 398600.4418;
