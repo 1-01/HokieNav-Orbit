@@ -164,7 +164,7 @@ gp_sph = gravityPerturbation(398600.4418, 6378.1363, ...
                        earth.degree, earth.order, earth.Cnm, earth.Snm, ...
                        r, geocentricColatitude, longitude02pi);
 % Switch around the components from the spherical basis to the ECI basis
-gp_eci = 0*Reci_ecf*Recf_sph*gp_sph;
+gp_eci = Reci_ecf*Recf_sph*gp_sph;
 
 % ========================= AERODYNAMIC DRAG ==============================
 % Obtain the perturbing aerodynamic acceleration (drag) according to the
