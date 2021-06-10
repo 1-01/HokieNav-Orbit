@@ -112,13 +112,6 @@ Recf_sph = sphr2ijk(longitude02pi, geocentricColatitude);
 % Calculate the Local Sidereal Time (LST)
 LST = GMST + longitudepipi;
 
-% ====================== POS/VEL OF EARTH WRT SUN =========================
-posEarthRelSun_ICRF = [149597870.700;0;0];
-velEarthRelSun_ICRF = [1;1;1];
-% ====================== POS/VEL OF LUNA WRT EARTH =======================
-posLunaRelEarth_ICRF = [1;1;1];
-velLunaRelEarth_ICRF = [1;1;1];
-
 %% Atmosphere
 % Calculate Earth's atmospheric density at altitude for use regarding drag
 % using the Naval Research Lab's Mass Spectrometer and Incoherent Scatter
@@ -130,12 +123,15 @@ velLunaRelEarth_ICRF = [1;1;1];
 
 % Utilize NRLMSISE00 to calculate atmospheric densities of individual
 % species [1/m3] as well as the total mass density [kg/m3] (element 6)
+flags = ones(23,1);
+flags(2) = 0; flags(9) = -1;
 [~, densities] = atmosnrlmsise00(GPSh*1e3, ... Current GPS height (m)
                            rad2deg(geodeticLatitude), ... latitude (deg)
                            rad2deg(longitude02pi), ... longitude (deg)
                            year(tUTC), ... Year
                            DOY, ... Day of the year
                            SOD, ... Seconds for time of day (UTC)
+                           flags, ...
                            'None', ...  <-- No warning (F107, F107A, APH)
                            'Oxygen');
 % Extract the atmospheric density [kg/m3]
@@ -168,7 +164,7 @@ gp_sph = gravityPerturbation(398600.4418, 6378.1363, ...
                        earth.degree, earth.order, earth.Cnm, earth.Snm, ...
                        r, geocentricColatitude, longitude02pi);
 % Switch around the components from the spherical basis to the ECI basis
-gp_eci = Reci_ecf*Recf_sph*gp_sph;
+gp_eci = 0*Reci_ecf*Recf_sph*gp_sph;
 
 % ========================= AERODYNAMIC DRAG ==============================
 % Obtain the perturbing aerodynamic acceleration (drag) according to the
@@ -179,6 +175,13 @@ S_CD = 0.01*2.4; % Product of reference area with CD (guess) [m2]
 adrag_eci = dragPerturbation(S_CD/mass, ...
                              altDensity, ...
                              veci - cross(wEarth, reci));
+
+% ======================= SOLAR RADIATION PRESSURE ========================
+% Obtain the perturbing solar radiation pressure (SRP) using an approximate
+% ephemeris to evaluate Earth's position relative to the sun. This
+% approximation comes from NAIF's best fit to the ephemeris through the
+% years 1800 to 2050.
+aSRP_eci = SRPperturbation(JDUTC, reci, 0.01, 1.8, mass);
 
 %% Nonlinear Dynamics
 % Write the dynamics using standard Cartesian components of position and
@@ -197,8 +200,8 @@ dxdt = zeros(6,1);
 % dxdt(3,1) = dZ/dt,             dxdt(6,1) = dVZ/dt
 dxdt(1:3) = veci;
 dxdt(4:6) = (-GM/r^2)*(reci/r) + gp_eci ...
-                               + adrag_eci;
-
+                               + adrag_eci ...
+                               + aSRP_eci;
 %% Variable Output
 % ============================= STATE DYNAMICS =============================
 varargout{1} = dxdt(1);
