@@ -37,6 +37,7 @@ TLE.W = deg2rad(121.9403); % Right ascension of ascending node (RAAN)
 % Time span
 tspan = [0, 15.5*(2*pi/TLE.n)]; % (~x complete orbits)
 tspan = [0, 50405];
+tspan = [0, 600];
 
 % Initial condition
 x0 = struct2array(IC.x)'; % Initial state of modified equinoctial elements
@@ -45,7 +46,7 @@ x0 = struct2array(IC.x)'; % Initial state of modified equinoctial elements
 options = odeset('InitialStep', 15, ...
                  'RelTol', 1e-13, ...
                  'AbsTol', 1e-14, ...
-                 'MaxStep', 30, ...
+                 'MaxStep', 0.01, ...
                  'Events', @odevents);
 
 % Solve
