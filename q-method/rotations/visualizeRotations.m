@@ -1,4 +1,4 @@
-%clear, clc, clf
+clear, clc, clf
 
 % Set scale of figure
 scale = 1.2;
@@ -25,22 +25,13 @@ Reaea = @(axis, angle) [(1-2*((axis(2)*sind(angle/2)).^2+(axis(3)*sind(angle/2))
 
 %% Choose a rotation matrix
 % Choose a rotation matrix to use
-% R = R313(0,0,45);
-% R = Rquat([cosd(45/2); 0; 0; 1*sind(45/2)]);
-% R = Reaea([0;0;1], 45);
-
-Rtest = roty(atand(1/sqrt(2)))*rotz(45)';
-Rquat = [0.577350269189626         0.577350269189626         0.577350269189626
-        -0.627510829367687         0.766162995599226        -0.138652166231538
-        -0.522395277249846        -0.282242680757336         0.804637958007183];
-Rrodr = [0.577350269189626         0.577350269189626         0.577350269189626
-        -0.577350269189626         0.788675134594813        -0.211324865405187
-        -0.577350269189626        -0.211324865405187         0.788675134594813];
+R = R313(0,0,45);
+R = Rquat([cosd(45/2); 0; 0; 1*sind(45/2)]);
+R = Reaea([0;0;1], 45);
 
 % Pick a vector in the A frame
 % vA = rand(3,1);
 vA = [1;1;1];
-% vA = [34355.1604281134;15504.9038569190;-11482.5148748182]/norm([34355.1604281134;15504.9038569190;-11482.5148748182]);
          
 %% Plot
 % Create figure and define
@@ -59,34 +50,25 @@ ylabel("$y^A$ (black)", 'Interpreter', 'latex')
 zlabel("$z^A$ (black)", 'Interpreter', 'latex')
 % Set the origin to be in the middle
 xlim([-scale,scale]), ylim([-scale,scale]), zlim([-scale,scale])
-for k = 1:3
-    if (k == 1)
-        R = Rtest;
-    elseif (k == 2)
-        R = Rquat;
-    else
-        R = Rrodr;
-    end
-    % Visualize the new set of axes NOTE THAT THIS CORRESPONDS TO R' TO ROTATE
-    % THE BASIS VECTORS IN FRAME A
-    ipA = R'*iA;
-    jpA = R'*jA;
-    kpA = R'*kA;
-    % Plot the new basis (that was just rotated) in the A frame
-    plot3([O(1), ipA(1)], [O(2), ipA(2)], [O(3), ipA(3)], 'b-'), text(ipA(1), ipA(2), ipA(3), "$x^B$", 'Interpreter', 'latex')
-    plot3([O(1), jpA(1)], [O(2), jpA(2)], [O(3), jpA(3)], 'b-'), text(jpA(1), jpA(2), jpA(3), "$y^B$", 'Interpreter', 'latex')
-    plot3([O(1), kpA(1)], [O(2), kpA(2)], [O(3), kpA(3)], 'b-'), text(kpA(1), kpA(2), kpA(3), "$z^B$", 'Interpreter', 'latex')
+% Visualize the new set of axes NOTE THAT THIS CORRESPONDS TO R' TO ROTATE
+% THE BASIS VECTORS IN FRAME A
+ipA = R'*iA;
+jpA = R'*jA;
+kpA = R'*kA;
+% Plot the new basis (that was just rotated) in the A frame
+plot3([O(1), ipA(1)], [O(2), ipA(2)], [O(3), ipA(3)], 'b-'), text(ipA(1), ipA(2), ipA(3), "$x^B$", 'Interpreter', 'latex')
+plot3([O(1), jpA(1)], [O(2), jpA(2)], [O(3), jpA(3)], 'b-'), text(jpA(1), jpA(2), jpA(3), "$y^B$", 'Interpreter', 'latex')
+plot3([O(1), kpA(1)], [O(2), kpA(2)], [O(3), kpA(3)], 'b-'), text(kpA(1), kpA(2), kpA(3), "$z^B$", 'Interpreter', 'latex')
 
-    % Plot the given v in terms of the A basis
-    plot3([O(1), vA(1)], [O(2), vA(2)], [O(3), vA(3)], 'r-', 'MarkerSize', 5), text(vA(1), vA(2), vA(3), "$v^A$", 'Interpreter', 'latex')
-    % Rotate v from frame A to frame B
-    vB = R*vA;
-    % Express vB (which is written in terms of frame B components) as a linear
-    % combination of frame B's axes written with respect to frame A
-    M = [ipA, jpA, kpA];
-    % Plot the vector v in the B frame (expressed in A-frame coordinates)
-    vBinA = M*vB;
-    plot3([O(1), vBinA(1)], [O(1), vBinA(2)], [O(1), vBinA(3)], 'r-', 'MarkerSize', 5), text(vBinA(1), vBinA(2), vBinA(3), "$v^B$", 'Interpreter', 'latex')
-end
-hold off
+% Plot the given v in terms of the A basis
+plot3([O(1), vA(1)], [O(2), vA(2)], [O(3), vA(3)], 'r-', 'MarkerSize', 5), text(vA(1), vA(2), vA(3), "$v^A$", 'Interpreter', 'latex')
+% Rotate v from frame A to frame B
+vB = R*vA;
+% Express vB (which is written in terms of frame B components) as a linear
+% combination of frame B's axes written with respect to frame A
+M = [ipA, jpA, kpA];
+% Plot the vector v in the B frame (expressed in A-frame coordinates)
+vBinA = M*vB;
+plot3([O(1), vBinA(1)], [O(1), vBinA(2)], [O(1), vBinA(3)], 'r-', 'MarkerSize', 5), text(vBinA(1), vBinA(2), vBinA(3), "$v^B$", 'Interpreter', 'latex')
+
 title(sprintf("$v^A = (%1.3f, %1.3f, %1.3f)$ and $v^B = (%1.3f, %1.3f, %1.3f)$", vA(1), vA(2), vA(3), vB(1), vB(2), vB(3)), 'Interpreter', 'latex')
