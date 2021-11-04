@@ -1,8 +1,9 @@
 # Ignore these directories
-#mats/
 notes/
 out/
-tles/
+
+# Include the file(s) (.m) to read the TLEs, but not the TLEs themselves
+tles/*.tle
 
 # Ignore these files
 *.asv

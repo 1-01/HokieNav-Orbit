@@ -1,11 +1,12 @@
 % HokieNav Orbital Simulation
 % Matt Werner (m.werner@vt.edu) - April 8, 2021
-clear, clc, HokieNavPath
+clear, clc
+HokieNavPath
 
 %% Inputs
 diary out/log
 disp("HokieNav Orbital Simulation")
-disp(strcat("Start time: ", datestr(datetime('now'))))
+disp("Start time: " + datestr(datetime('now')))
 
 % Gravitational parameter (km3/s2)
 gravity.GM = 398600.4418;
@@ -17,33 +18,25 @@ gravity.GM = 398600.4418;
 % Initial time
 [IC.t.JD, IC.t.UTC, IC.t.local] = defineInitialTime('20-May-2021 04:06:02.000', 'd-MMMM-yyyy HH:mm:ss.SSS', '-00:00');
 
-TLE.M = deg2rad(89.9422); % Mean anomaly
-TLE.n = 15.49024471*2*pi/86400; % Mean motion (rev/day) --> (rad/s)
-TLE.a = gravity.GM^(1/3)*TLE.n^(-2/3); % Semimajor axis
-TLE.e = 0.0003181; % Orbital eccentricity
-TLE.I = deg2rad(51.6437); % Orbital inclination
-TLE.w = deg2rad(20.5176); % Argument of periapsis
-TLE.W = deg2rad(121.9403); % Right ascension of ascending node (RAAN)
+% Orbital elements from TLE
+[TLE.a, TLE.e, TLE.I, TLE.W, TLE.w, TLE.f] = tle('ISS_2021_May_20_04_06_02_UTC_(Day_140).tle', 'rad');
 
-%% ODE Propagation
-% Solve for the true anomaly via Kepler's equation
-[~, TLE.f] = anomalies(TLE.M, TLE.e);
 % Convert TLE to modified equinoctial elements
 [IC.MEE.p, IC.MEE.f, IC.MEE.g, IC.MEE.h, IC.MEE.k, IC.MEE.L] ...
     = orbital2modeq(TLE.a, TLE.e, TLE.I, TLE.w, TLE.W, TLE.f);
+
+%% ODE Propagation
 % Convert the initial conditions to the (ECI) Cartesian state
 [IC.x.r, IC.x.v] = modeq2inertial(IC.MEE.p, IC.MEE.f, IC.MEE.g, IC.MEE.h, IC.MEE.k, IC.MEE.L, gravity.GM);
 
 % Time span
-tspan = [0, 15.5*(2*pi/TLE.n)]; % (~x complete orbits)
-tspan = [0, 50405];
 tspan = [0, 600];
 
 % Initial condition
 x0 = struct2array(IC.x)'; % Initial state of modified equinoctial elements
 
 % Specify options for the ODE solver
-options = odeset('InitialStep', 15, ...
+options = odeset('InitialStep', 1, ...
                  'RelTol', 1e-13, ...
                  'AbsTol', 1e-14, ...
                  'MaxStep', 0.01, ...
