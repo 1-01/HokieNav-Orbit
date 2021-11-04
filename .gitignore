@@ -7,3 +7,4 @@ tles/*.tle
 
 # Ignore these files
 *.asv
+compare/*.txt
