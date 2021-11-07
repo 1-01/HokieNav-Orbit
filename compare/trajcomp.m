@@ -1,4 +1,4 @@
-GMAT = readtable("compare/GMAT_SIM_ISS_2021_May_20_04_06_02_UTC_(Day_140).txt");
+GMAT = readtable("compare/GMAT_SIM_ISS_2021_May_20_04-06-02_UTC_(Day_140).txt");
 GMAT.HokieNav_ElapsedHours = GMAT.HokieNav_ElapsedDays*24;
 GMAT.HokieNav_ElapsedMinutes = GMAT.HokieNav_ElapsedDays*24*60;
 
