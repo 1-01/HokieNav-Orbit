@@ -19,7 +19,7 @@ gravity.GM = 398600.4418;
 [IC.t.JD, IC.t.UTC, IC.t.local] = defineInitialTime('20-May-2021 04:06:02.000', 'd-MMMM-yyyy HH:mm:ss.SSS', '-00:00');
 
 % Orbital elements from TLE
-[TLE.a, TLE.e, TLE.I, TLE.W, TLE.w, TLE.f] = tle('ISS_2021_May_20_04_06_02_UTC_(Day_140).tle', 'rad');
+[TLE.a, TLE.e, TLE.I, TLE.W, TLE.w, TLE.f] = tle('ISS_2021_May_20_04-06-02_UTC_(Day_140).tle', 'rad');
 
 % Convert TLE to modified equinoctial elements
 [IC.MEE.p, IC.MEE.f, IC.MEE.g, IC.MEE.h, IC.MEE.k, IC.MEE.L] ...

@@ -2,8 +2,8 @@
 notes/
 out/
 
-# Include the file(s) (.m) to read the TLEs, but not the TLEs themselves
-tles/*.tle
+# Ignore the GMAT output file (~45MB) which can be found on the Google drive
+compare/GMAT*
 
 # Ignore these files
 *.asv
