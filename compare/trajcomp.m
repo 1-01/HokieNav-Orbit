@@ -1,4 +1,4 @@
-GMAT = readtable("C:\Users\Matt\AppData\Local\GMAT\R2018a\output\GMAT_SIM_ISS_2021_May_20_04_06_02_UTC_(Day_140).txt");
+GMAT = readtable("C:\Users\Matt\AppData\Local\GMAT\R2018a\output\GMAT_SIM_ISS_2021_May_20-04-06-02_UTC_(Day_140).txt");
 
 % Interpolate Matlab results to plot residual
 MATLAB.t = interp1(traj.t/86400, traj.t/86400, GMAT.HokieNav_ElapsedDays);
