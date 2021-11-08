@@ -50,7 +50,9 @@ options = odeset('InitialStep', 1, ...
                  'AbsTol', 1e-14, ...
                  'MaxStep', inf, ...
                  'Events', @odevents);
-% Time span
+% Time span (Note that the actual timespan we want is 10 minutes from
+% *now*, but the latest TLE update might be some time old so that the
+% effective integration time is more than 10 minutes.)
 tspan = [0, 600];
 % Initial condition for the state x
 x0 = struct2array(IC.ECI)';
