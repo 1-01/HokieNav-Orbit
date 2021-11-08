@@ -1,4 +1,4 @@
-function traj = HokieNav(TLEfile)
+function traj = propagateTrajectory(TLEfile)
 % 
 % Matt Werner (m.werner@vt.edu) - April 8, 2021
 % 
