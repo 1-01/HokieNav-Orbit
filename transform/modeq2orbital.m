@@ -1,4 +1,4 @@
-function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
+function COE = modeq2orbital(MEE)
 % 
 % Matt Werner (m.werner@vt.edu) - April 16, 2021
 % 
@@ -31,7 +31,7 @@ function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
 % 
 %    Inputs:
 % 
-%  p, f, g, h, k, L - Modified equinoctial orbital elements such that each
+%               MEE - Modified equinoctial orbital elements such that each
 %                     element is an N-by-1 vector in the particular order
 %                     (p, f, g, h, k, L), where
 %                       p - Semiparameter
@@ -45,7 +45,7 @@ function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
 % 
 %    Outputs:
 % 
-%  a, e, I, w, W, v - Classical osculating orbital elements such that each
+%               COE - Classical osculating orbital elements such that each
 %                     element is an N-by-1 vector in the particular order
 %                     (a, e, I, w, W, f), where
 %                       a - Semimajor axis
@@ -61,16 +61,16 @@ function [a, e, I, w, W, v] = modeq2orbital(p, f, g, h, k, L)
 % No checks
 
 % Calculate the eccentricity
-e = sqrt(f.^2 + g.^2);
+COE.e = sqrt(MEE.f.^2 + MEE.g.^2);
 % Calculate the semimajor axis
-a = p./(1 - e.^2);
+COE.a = MEE.p./(1 - COE.e.^2);
 % Calculate the inclination
-I = 2*atan(sqrt(h.^2 + k.^2));
+COE.I = 2*atan(sqrt(MEE.h.^2 + MEE.k.^2));
 % Calculate the right ascension of the ascending node (RAAN)
-W = atan2(k, h);
-W(W < 0) = W(W < 0) + 2*pi;
+COE.W = atan2(MEE.k, MEE.h);
+COE.W(COE.W < 0) = COE.W(COE.W < 0) + 2*pi;
 % Calculate the argument of periapsis
-w = atan2(g.*h - f.*k, f.*h + g.*k);
-w(w < 0) = w(w < 0) + 2*pi;
+COE.w = atan2(MEE.g.*MEE.h - MEE.f.*MEE.k, MEE.f.*MEE.h + MEE.g.*MEE.k);
+COE.w(COE.w < 0) = COE.w(COE.w < 0) + 2*pi;
 % Calculate the true anomaly
-v = L - (W + w);
+COE.f = MEE.L - (COE.W + COE.w);

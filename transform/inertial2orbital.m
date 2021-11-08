@@ -1,4 +1,4 @@
-function [a, e, I, w, W, f] = inertial2orbital(rvec, vvec, GM)
+function COE = inertial2orbital(ECI, GM)
 % 
 % Matt Werner (m.werner@vt.edu) - May 30 2021
 % 
@@ -7,26 +7,31 @@ function [a, e, I, w, W, f] = inertial2orbital(rvec, vvec, GM)
 % 
 %    Inputs:
 % 
-%              rvec - Inertial position.
-%                     Size: 3-by-1 (vector)
-%                     Units: km (kilometers)
-% 
-%              vvec - Inertial velocity.
-%                     Size: 3-by-1 (vector)
-%                     Units: km/s (kilometers per second)
+%               ECI - Inertial position and velocity, labelled by the
+%                     Cartesian coordinates (X, Y, Z, VX, VY, VZ).
+%                     Size: 1-by-1 (structure)
+%                           6-by-1 (fields)
+%                           1-by-1 (each field)
+%                     Units: SI (km, radians)
 % 
 %                GM - Central-body gravitational parameter.
-%                     Size: 3-by-1 (vector)
+%                     Size: 1-by-1 (scalar)
 %                     Units: km3/s2 (cubic kilometer per squared second)
 % 
 %    Outputs:
 % 
-%  a, e, I, w, W, f - The six (6) Keplerian (classical) orbital elements.
-%                     Size: 1-by-1 (scalars)
-%                     Units: km (kilometers) and - (radians)
+%               COE - The six (6) Keplerian (classical) orbital elements
+%                     labelled (a, e, I, W, w, f).
+%                     Size: 1-by-1 (structure)
+%                           6-by-1 (fields)
+%                           1-by-1 (each field)
+%                     Units: SI (km, radians)
 % 
 
 % No checks (note that singularities can occur)
+
+rvec = [ECI.X; ECI.Y; ECI.Z];
+vvec = [ECI.VX; ECI.VY; ECI.VZ];
 
 % Magnitudes of the provided position and velocity vectors
 r = norm(rvec);
@@ -58,3 +63,7 @@ if (evec(3) < 0), w = 2*pi - w; end
 % Compute the true anomaly
 f = acos(rvec'*evec / (r*e));
 if (rvec'*vvec < 0), f = 2*pi - f; end
+
+% Assign
+COE.a = a; COE.e = e; COE.I = I;
+COE.W = W; COE.w = w; COE.f = f;

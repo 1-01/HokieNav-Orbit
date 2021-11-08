@@ -1,4 +1,4 @@
-function [p, f, g, h, k, L] = orbital2modeq(a, e, I, w, W, v)
+function MEE = orbital2modeq(COE)
 % 
 % Matt Werner (m.werner@vt.edu) - May 25, 2021
 % 
@@ -7,61 +7,28 @@ function [p, f, g, h, k, L] = orbital2modeq(a, e, I, w, W, v)
 % 
 %    Inputs:
 % 
-%                  a - Semimajor axis
-%                      Size: n-by-1 (vector)
-%                      Units: km (kilometers)
-% 
-%                  e - Orbital eccentricity
-%                      Size: n-by-1 (vector)
-%                      Units: - (unitless)
-% 
-%                  I - Orbital inclination
-%                      Size: n-by-1 (vector)
-%                      Units: - (radians)
-% 
-%                  w - Argument of perigee (AoP)
-%                      Size: n-by-1 (vector)
-%                      Units: - (radians)
-% 
-%                  W - Right ascension of the ascending node (RAAN)
-%                      Size: n-by-1 (vector)
-%                      Units: - (radians)
-% 
-%                  v - True anomaly
-%                      Size: n-by-1 (vector)
-%                      Units: - (radians)
+%               COE - The 6 classical (or Keplerian) orbital elements
+%                     (COE/KOE) labelled (a, e, I, W, w, f).
+%                     Size: 1-by-1 (structure)
+%                           6-by-1 (fields)
+%                           n-by-1 (each field)
+%                     Units: SI (km, radians)
 % 
 %    Outputs:
 % 
-%                  p - Semiparameter
-%                      Size: n-by-1 (vector)
-%                      Units: km (kilometers)
-% 
-%                  f - Component of the eccentricity vector
-%                      Size: n-by-1 (vector)
-%                      Units: - (unitless)
-% 
-%                  g - Component of the eccentricity vector
-%                      Size: n-by-1 (vector)
-%                      Units: - (unitless)
-% 
-%                  h - Orbit orientation parameter
-%                      Size: n-by-1 (vector)
-%                      Units: - (unitless)
-% 
-%                  k - Orbit orientation parameter
-%                      Size: n-by-1 (vector)
-%                      Units: - (unitless)
-% 
-%                  L - True anomaly
-%                      Size: n-by-1 (vector)
-%                      Units: - (radians)
+%               MEE - The 6 modified equinoctial orbital elements (MEE)
+%                     labelled (p, f, g, h, k, L).
+%                     Size: 1-by-1 (structure)
+%                           6-by-1 (fields)
+%                           n-by-1 (each field)
+%                     Units: SI (km, radians)
 % 
 
-% Transform the classical orbital elements to modified equinoctial elements
-p = a.*(1 - e.^2);
-f = e.*cos(w + W);
-g = e.*sin(w + W);
-h = tan(I/2).*cos(W);
-k = tan(I/2).*sin(W);
-L = W + w + v;
+% Transform the classical orbital elements (COE) to modified equinoctial
+% elements (MEE)
+MEE.p = COE.a.*(1 - COE.e.^2);
+MEE.f = COE.e.*cos(COE.w + COE.W);
+MEE.g = COE.e.*sin(COE.w + COE.W);
+MEE.h = tan(COE.I/2).*cos(COE.W);
+MEE.k = tan(COE.I/2).*sin(COE.W);
+MEE.L = COE.W + COE.w + COE.f;
