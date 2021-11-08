@@ -107,10 +107,19 @@ end
 % and spherical representations of the perturbing accelerations
 for k = numel(traj.t):-1:1
     % Recover the classical orbital elements
-    [traj.COE.a(k,1), traj.COE.e(k,1), traj.COE.I(k,1), ...
-     traj.COE.w(k,1), traj.COE.W(k,1), traj.COE.f(k,1)] ...
-      = inertial2orbital([traj.x.PX(k); traj.x.PY(k); traj.x.PZ(k)], ...
-                         [traj.x.VX(k); traj.x.VY(k); traj.x.VZ(k)], gravity.GM);
+    tmpECI.X = traj.x.PX(k);
+    tmpECI.Y = traj.x.PY(k);
+    tmpECI.Z = traj.x.PZ(k);
+    tmpECI.VX = traj.x.VX(k);
+    tmpECI.VY = traj.x.VY(k);
+    tmpECI.VZ = traj.x.VZ(k);
+    tmpCOE = inertial2orbital(tmpECI, gravity.GM);
+    traj.COE.a(k,1) = tmpCOE.a;
+    traj.COE.e(k,1) = tmpCOE.e;
+    traj.COE.I(k,1) = tmpCOE.I;
+    traj.COE.W(k,1) = tmpCOE.W;
+    traj.COE.w(k,1) = tmpCOE.w;
+    traj.COE.f(k,1) = tmpCOE.f;
     
     % Coordinate transformations
     TECF_ECI = R3(traj.timeSystems.GMST(k));
