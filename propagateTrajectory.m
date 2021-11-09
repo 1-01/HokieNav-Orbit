@@ -64,7 +64,7 @@ traj = struct('IC', [], 't', [], 'x', [], 'dxdt', [], 'events', []);
 
 % Distribute the state
 traj.IC = IC;
-traj.x.PX = x(:,1); traj.x.PY = x(:,2); traj.x.PZ = x(:,3);
+traj.x.X = x(:,1); traj.x.Y = x(:,2); traj.x.Z = x(:,3);
 traj.x.VX = x(:,4); traj.x.VY = x(:,5); traj.x.VZ = x(:,6);
 clear x
 
@@ -96,7 +96,7 @@ for k = numel(traj.t):-1:1
      traj.position.ECI.Y(k,1), ... 21
      traj.position.ECI.Z(k,1)] ... 22
         = odeval(traj.t(k), ...
-                  [traj.x.PX(k); traj.x.PY(k); traj.x.PZ(k);  ...
+                  [traj.x.X(k); traj.x.Y(k); traj.x.Z(k);  ...
                    traj.x.VX(k); traj.x.VY(k); traj.x.VZ(k)], ...
                   gravity, IC);
 end
@@ -105,22 +105,10 @@ end
 % Perform coordinate transformations to express known quantities in
 % different bases. Of particular interest is obtaining the Earth-fixed
 % and spherical representations of the perturbing accelerations
+
+% Recover the classical orbital elements
+traj.COE = inertial2orbital(traj.x, gravity.GM);
 for k = numel(traj.t):-1:1
-    % Recover the classical orbital elements
-    tmpECI.X = traj.x.PX(k);
-    tmpECI.Y = traj.x.PY(k);
-    tmpECI.Z = traj.x.PZ(k);
-    tmpECI.VX = traj.x.VX(k);
-    tmpECI.VY = traj.x.VY(k);
-    tmpECI.VZ = traj.x.VZ(k);
-    tmpCOE = inertial2orbital(tmpECI, gravity.GM);
-    traj.COE.a(k,1) = tmpCOE.a;
-    traj.COE.e(k,1) = tmpCOE.e;
-    traj.COE.I(k,1) = tmpCOE.I;
-    traj.COE.W(k,1) = tmpCOE.W;
-    traj.COE.w(k,1) = tmpCOE.w;
-    traj.COE.f(k,1) = tmpCOE.f;
-    
     % Coordinate transformations
     TECF_ECI = R3(traj.timeSystems.GMST(k));
     TSPH_ECF = sphr2ijk(traj.position.geocentric.longitude(k), traj.position.geocentric.colatitude(k))';

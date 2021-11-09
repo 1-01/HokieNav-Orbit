@@ -30,39 +30,46 @@ function COE = inertial2orbital(ECI, GM)
 
 % No checks (note that singularities can occur)
 
-rvec = [ECI.X; ECI.Y; ECI.Z];
-vvec = [ECI.VX; ECI.VY; ECI.VZ];
+rvec = [ECI.X, ECI.Y, ECI.Z];
+vvec = [ECI.VX, ECI.VY, ECI.VZ];
 
 % Magnitudes of the provided position and velocity vectors
-r = norm(rvec);
-v = norm(vvec);
+r = vecnorm(rvec, 2, 2);
+v = vecnorm(vvec, 2, 2);
 
 % (Normalized) specific angular momentum
 hAMvec = cross(rvec, vvec);
-hAMvecUnit = hAMvec/norm(hAMvec);
+hAMvecUnit = hAMvec./vecnorm(hAMvec,2,2);
 
 % Compute the semimajor axis (a)
-a = 1/(2/r - v^2/GM);
+a = 1./(2./r - v.^2/GM);
 
 % Compute the eccentricity (e)
-evec = ((vvec'*vvec - GM/sqrt(rvec'*rvec))*rvec - (rvec'*vvec)*vvec)/GM;
-e = norm(evec);
+evec = ((v.^2 - GM./r).*rvec - sum(rvec.*vvec,2).*vvec)/GM;
+e = vecnorm(evec,2,2);
 
 % Compute the inclination (I)
-I = acos(hAMvecUnit(3));
+I = acos(hAMvecUnit(:,3));
 
 % Compute the longitude of the ascending node (W)
-nvec = cross([0;0;1], hAMvec);
-W = acos([1,0,0] * nvec/norm(nvec));
-if (nvec(2) < 0), W = 2*pi - W; end
+khat = [zeros(numel(r), 2), ones(numel(r), 1)];
+nvec = cross(khat, hAMvec);
+W = acos(nvec(:,1)./vecnorm(nvec,2,2));
+for k = 1:numel(W)
+    if (nvec(k,2) < 0), W(k) = 2*pi - W(k); end
+end
 
 % Compute the argument of perigee (w)
-w = acos(evec'*nvec / (e*norm(nvec)));
-if (evec(3) < 0), w = 2*pi - w; end
+w = acos(sum(evec.*nvec,2) ./ (e.*vecnorm(nvec,2,2)));
+for k = 1:numel(w)
+    if (evec(k,3) < 0), w(k) = 2*pi - w(k); end
+end
 
 % Compute the true anomaly
-f = acos(rvec'*evec / (r*e));
-if (rvec'*vvec < 0), f = 2*pi - f; end
+f = acos(sum(rvec.*evec,2) ./ (r.*e));
+for k = 1:numel(f)
+    if (sum(rvec(k,:).*vvec(k,:)) < 0), f(k) = 2*pi - f(k); end
+end
 
 % Assign
 COE.a = a; COE.e = e; COE.I = I;
