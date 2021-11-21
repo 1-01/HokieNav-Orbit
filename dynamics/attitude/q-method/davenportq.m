@@ -163,21 +163,9 @@ K = [s, z'; z, S-s*eye(3)];
 [eigenvecs, eigenvals] = eig(K);
 
 % Pick the eigenvector corresponding to the most positive eigenvalue. Since
-% the quaternion q is treated like a real-valued vector and the Davenport
-% matrix is real-valued, then K*q must be real-valued, but K*q = lambda*q
-% since q is the optimal eigenvector. Thus, lambda must be real, so throw
-% away all complex eigenvalues. However, we cannot use max() on the
-% eigenvalues since max() compares magnitude when the input is complex.
-% Find the most positive (real) eigenvalue by elimination - any complex
-% eigenvalue must come in conjugate pairs, so set these eigenvalues to
-% -inf. (There can be only 0 or 2 complex eigenvalues since q must be
-% real).
-eigenvals = diag(eigenvals)';
-for dim = 1:4
-    if (~isreal(eigenvals(dim)))
-        eigenvals(dim) = -inf;
-    end
-end
+% the Davenport matrix is symmetric, all the eigenvalues are real-valued,
+% so simply take the maximum eigenvalue.
+eigenvals = [eigenvals(1,1), eigenvals(2,2), eigenvals(3,3), eigenvals(4,4)];
 [~, qcol] = max(eigenvals);
 q = eigenvecs(:, qcol);
 % Calculate the rotation matrix in terms of this quaternion
