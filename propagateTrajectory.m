@@ -19,7 +19,10 @@ function traj = propagateTrajectory(TLEfile)
 %                     standard meta data (satellite name, etc.) as well as
 %                     initial conditions (time, position, and velocity) in
 %                     the form of the Keplerian orbital elements. Units of
-%                     quantities within the TLE are standard. That is, 
+%                     quantities within the TLE are standard. That is, the
+%                     mean motion (M) is given in units of [revolutions per
+%                     day] and all other angles are given in units of
+%                     [degrees].
 % 
 %    Outputs:
 % 
