@@ -50,12 +50,14 @@ function [q, R] = davenportq(vA, vB, w)
 % rotation matrix R. Note that the quaternion is expressed
 %                                      _    _
 %                                     |  qr  |
-%       q = qr + qi*i + qj*j + qk*k = |      |
+%       q = qr + qi*i + qj*j + qk*k = |      |,
 %                                     |  qi  |
 %                                     |      |
 %                                     |  qj  |
 %                                     |      |
 %                                     |_ qk _|
+% 
+% where i*i = j*j = k*k = i*j*k = -1.
 % 
 % As such, the scalar part of the quaternion occupies the first element
 % while the vector part of the quaternion occupies the last 3 elements.
@@ -84,8 +86,8 @@ function [q, R] = davenportq(vA, vB, w)
 %                     weights are divided by their sum. DEFAULT behavior is
 %                     that each measurement receives equal weighting
 %                     corresponding to
-%                                   w = [1, 1, ..., 1]/k
-%                     where k > 1 is the amount of vectors given in each
+%                                   w = [1, 1, ..., 1]/N
+%                     where N > 1 is the amount of vectors given in each
 %                     set vA and vB.
 % 
 %    Outputs:
@@ -93,13 +95,15 @@ function [q, R] = davenportq(vA, vB, w)
 %                 q - The optimal quaternion parameterizing the rotation
 %                     matrix R such that the cost function J is minimized
 %                     (see introduction description for more information).
-%                     Size: 4-by-1
+%                     Size: 4-by-1 (vector)
 %                     Units: - (N/A)
 % 
 %                 R - The rotation matrix resulting from expressing the
 %                     action of quaternions in the form of a linear
 %                     transformation that transforms from the body frame
 %                     (frame B) to the fixed frame (frame A).
+%                     Size: 3-by-3 (matrix)
+%                     Units: - (N/A)
 % 
 % Sources: 
 %   - https://ahrs.readthedocs.io/en/latest/filters/davenport.html
@@ -114,12 +118,12 @@ narginchk(2, 3)
 assert(all(size(vA) == size(vB)), "Input must be same size.")
 % Check that vA contains 3 rows
 assert(size(vA, 1) == 3, "Row dimension should be 3 but is %1.0f.", size(vA, 1))
-% Check that k > 1
-setsize = size(vA, 2);
-assert(setsize > 1, "Provided sample size needs to be greater than 1.")
+% Check that N > 1
+N = size(vA, 2);
+assert(N > 1, "Provided sample size needs to be greater than 1.")
 % Check that each vector in the sets are unit normalized. If not, then
 % normalize them. (Only alter the inputs if necessary.)
-for k = 1:setsize
+for k = 1:N
     % Check each vector in frame A
     if (vA(:,k)'*vA(:,k) ~= 1)
         vA(:,k) = vA(:,k)/norm(vA(:,k));
@@ -133,7 +137,7 @@ end
 % provide the default setting that each measurement receives equal weight.
 if (nargin == 2)
     % Create the default weights wk
-    w = ones(1, setsize)/setsize;
+    w = ones(1, N)/N;
 else
     % Ensure that the provided weights are normalized
     if (sum(w) ~= 1)
@@ -147,7 +151,7 @@ end
 % independent of frames so that it makes sense to combine them in
 % calculations directly.
 B = zeros(3,3);
-for k = 1:setsize
+for k = 1:N
     B = B + w(k)*vA(:,k)*vB(:,k)';
 end
 
@@ -163,21 +167,9 @@ K = [s, z'; z, S-s*eye(3)];
 [eigenvecs, eigenvals] = eig(K);
 
 % Pick the eigenvector corresponding to the most positive eigenvalue. Since
-% the quaternion q is treated like a real-valued vector and the Davenport
-% matrix is real-valued, then K*q must be real-valued, but K*q = lambda*q
-% since q is the optimal eigenvector. Thus, lambda must be real, so throw
-% away all complex eigenvalues. However, we cannot use max() on the
-% eigenvalues since max() compares magnitude when the input is complex.
-% Find the most positive (real) eigenvalue by elimination - any complex
-% eigenvalue must come in conjugate pairs, so set these eigenvalues to
-% -inf. (There can be only 0 or 2 complex eigenvalues since q must be
-% real).
-eigenvals = diag(eigenvals)';
-for dim = 1:4
-    if (~isreal(eigenvals(dim)))
-        eigenvals(dim) = -inf;
-    end
-end
+% the Davenport matrix is symmetric, all the eigenvalues are real-valued,
+% so simply take the maximum eigenvalue.
+eigenvals = [eigenvals(1,1), eigenvals(2,2), eigenvals(3,3), eigenvals(4,4)];
 [~, qcol] = max(eigenvals);
 q = eigenvecs(:, qcol);
 % Calculate the rotation matrix in terms of this quaternion

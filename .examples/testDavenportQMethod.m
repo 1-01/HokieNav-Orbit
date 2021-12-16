@@ -18,7 +18,7 @@ vA = [vA1, vA2];
 
 % Use Davenport's q-method to determine the best rotation matrix that fits
 % between these two measurements (vB) and calculations (vA)
-[q, R] = davenportq(vA, vB);
+[q, R] = davenportq(vA, vB, [0.5, 0.5]);
 
 % See how we did by switching R and Rtest. (Alternatively, you could see by
 % providing R-Rtest - a success shows no blue axes and the representation
