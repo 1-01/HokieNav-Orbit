@@ -19,14 +19,14 @@ function M = crossProductMatrix(x)
 % 
 %    Inputs:
 % 
-%                 v - Vector whose cross-product equivalent matrix is to be
+%                 x - Vector whose cross-product equivalent matrix is to be
 %                     formed.
 %                     Size: 3-by-1 (vector)
 %                     Units: -
 % 
 %    Outputs:
 % 
-%                 M - The cross-product equivalent matrix of the vector v.
+%                 M - The cross-product equivalent matrix of the vector x.
 %                     Size: 3-by-3 (matrix)
 %                     Units: -
 % 
